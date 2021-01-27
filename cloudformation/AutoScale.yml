@@ -28,10 +28,6 @@ Parameters:
     Description: CIDR block of VPC
     Type: String
 
-  AmazonLinuxAMIID:
-    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
-    Default: /aws/service/ami-amazon-linux-latest/amzn-ami-hvm-x86_64-gp2
-
 ######################
 # Resources section
 ######################

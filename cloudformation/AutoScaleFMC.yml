@@ -9,14 +9,11 @@ Description: >-
 #   MGMT Subnet
 #   Transit Gateway
 
-
-
 ######################
 # Parameters section
 ######################
 
 Parameters:
-
   PodName:
     Description: >-
       Name of an active CloudFormation stack that contains the networking
@@ -24,7 +21,7 @@ Parameters:
     Type: String
     MinLength: 1
     MaxLength: 255
-    AllowedPattern: '^[a-zA-Z][-a-zA-Z0-9]*$'
+    AllowedPattern: "^[a-zA-Z][-a-zA-Z0-9]*$"
     Default: POD1
 
   NetworkStackName:
@@ -34,7 +31,7 @@ Parameters:
     Type: String
     MinLength: 1
     MaxLength: 255
-    AllowedPattern: '^[a-zA-Z][-a-zA-Z0-9]*$'
+    AllowedPattern: "^[a-zA-Z][-a-zA-Z0-9]*$"
     Default: AutoScale-Network
 
   FMCAMI:
@@ -43,7 +40,7 @@ Parameters:
     Type: String
     MinLength: 1
     MaxLength: 255
-    AllowedPattern: '^[a-zA-Z][-a-zA-Z0-9]*$'
+    AllowedPattern: "^[a-zA-Z][-a-zA-Z0-9]*$"
     Default: ami-020790e9a294ea856
 
   VPCCIDR:
@@ -59,7 +56,6 @@ Parameters:
 ######################
 
 Resources:
-
   ## VPC
   VPC:
     Type: AWS::EC2::VPC
@@ -68,20 +64,20 @@ Resources:
       EnableDnsHostnames: true
       CidrBlock: !Ref VPCCIDR
       Tags:
-       - Key: Name
-         Value: !Sub ${PodName}-AutoScaleFMC
+        - Key: Name
+          Value: !Sub ${PodName}-AutoScaleFMC
 
- #Internet Gateway
+  #Internet Gateway
   AutoScaleFMCIGW:
     Type: AWS::EC2::InternetGateway
     Properties:
       Tags:
-      - Key: Name
-        Value: !Sub ${PodName}-VPC-AutoScale-FMC-IGW
+        - Key: Name
+          Value: !Sub ${PodName}-VPC-AutoScale-FMC-IGW
 
-  IGWVPCAttachment:        
+  IGWVPCAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
-    Properties: 
+    Properties:
       InternetGatewayId: !Ref AutoScaleFMCIGW
       VpcId: !Ref VPC
 
@@ -90,22 +86,22 @@ Resources:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref VPC
-      Tags: 
-       - Key: Name
-         Value: !Sub ${PodName}-AutoScale FMC Spoke MGMT Route Table
+      Tags:
+        - Key: Name
+          Value: !Sub ${PodName}-AutoScale FMC Spoke MGMT Route Table
 
   ## MGMT Subnet
   MGMTSubnet:
     Type: AWS::EC2::Subnet
     Properties:
       Tags:
-       - Key: Name
-         Value: !Sub ${PodName}-AutoScale FMC Spoke MGMT Subnet A
+        - Key: Name
+          Value: !Sub ${PodName}-AutoScale FMC Spoke MGMT Subnet A
       VpcId: !Ref VPC
-      CidrBlock: !Select [ 100, !Cidr [ !GetAtt VPC.CidrBlock, 256, 8 ]]
-      AvailabilityZone: !Select 
+      CidrBlock: !Select [100, !Cidr [!GetAtt VPC.CidrBlock, 256, 8]]
+      AvailabilityZone: !Select
         - 0
-        - !GetAZs 
+        - !GetAZs
           Ref: AWS::Region
 
   ## Subnet associations - we need to associate the subnets with their respective route tables
@@ -129,8 +125,7 @@ Resources:
     Properties:
       RouteTableId: !Ref MGMTRouteTable
       DestinationCidrBlock:
-        Fn::ImportValue: 
-          !Sub ${NetworkStackName}-VPCCIDR      
+        Fn::ImportValue: !Sub ${NetworkStackName}-VPCCIDR
       TransitGatewayId: !Ref TransitGateway
 
   SpecificRouteMGMT1a:
@@ -138,12 +133,11 @@ Resources:
     DependsOn: VPCAttachment3a
     Properties:
       RouteTableId:
-        Fn::ImportValue: 
-          !Sub ${NetworkStackName}-MGMTRouteTable
+        Fn::ImportValue: !Sub ${NetworkStackName}-MGMTRouteTable
       DestinationCidrBlock: !GetAtt VPC.CidrBlock
       TransitGatewayId: !Ref TransitGateway
 
-## Create transit gateway to establish connectivity with the VPC created in Module 1a
+  ## Create transit gateway to establish connectivity with the VPC created in Module 1a
   TransitGateway:
     Type: "AWS::EC2::TransitGateway"
     Properties:
@@ -152,75 +146,74 @@ Resources:
       DefaultRouteTableAssociation: disable
       DefaultRouteTablePropagation: disable
       Description: A transit gateway inter-connects different VPCs
-      Tags: 
-      - Key: Name
-        Value: !Sub ${PodName}-${AWS::StackName}-TGW
+      Tags:
+        - Key: Name
+          Value: !Sub ${PodName}-${AWS::StackName}-TGW
 
   TGWRouteTable:
     Type: AWS::EC2::TransitGatewayRouteTable
-    Properties: 
+    Properties:
       Tags:
-       - Key: Name
-         Value: Security Route Table
+        - Key: Name
+          Value: Security Route Table
       TransitGatewayId: !Ref TransitGateway
 
   TGWRouteTableAssociation1:
     Type: AWS::EC2::TransitGatewayRouteTableAssociation
-    Properties: 
+    Properties:
       TransitGatewayAttachmentId: !Ref VPCAttachment1b
       TransitGatewayRouteTableId: !Ref TGWRouteTable
 
   TGWRouteTableAssociation2:
     Type: AWS::EC2::TransitGatewayRouteTableAssociation
-    Properties: 
+    Properties:
       TransitGatewayAttachmentId: !Ref VPCAttachment3a
       TransitGatewayRouteTableId: !Ref TGWRouteTable
 
   TGWRouteTablePropagation1:
     Type: AWS::EC2::TransitGatewayRouteTablePropagation
-    Properties: 
+    Properties:
       TransitGatewayAttachmentId: !Ref VPCAttachment1b
       TransitGatewayRouteTableId: !Ref TGWRouteTable
 
   TGWRouteTablePropagation2:
     Type: AWS::EC2::TransitGatewayRouteTablePropagation
-    Properties: 
+    Properties:
       TransitGatewayAttachmentId: !Ref VPCAttachment3a
       TransitGatewayRouteTableId: !Ref TGWRouteTable
 
-## Creating VPC attachments to Transit Gateway for VPC in Module 1 and VPC in Module 3
+  ## Creating VPC attachments to Transit Gateway for VPC in Module 1 and VPC in Module 3
   VPCAttachment1b:
     Type: AWS::EC2::TransitGatewayAttachment
-    Properties: 
-      SubnetIds: 
+    Properties:
+      SubnetIds:
         - Fn::ImportValue: !Sub ${NetworkStackName}-TGWSubnetA
         - Fn::ImportValue: !Sub ${NetworkStackName}-TGWSubnetB
       Tags:
-      - Key: Name
-        Value: !Sub ${PodName}-AutoScale-VPC-Attachment
+        - Key: Name
+          Value: !Sub ${PodName}-AutoScale-VPC-Attachment
       TransitGatewayId: !Ref TransitGateway
-      VpcId: 
-        Fn::ImportValue: 
-          !Sub ${NetworkStackName}-VPCID
+      VpcId:
+        Fn::ImportValue: !Sub ${NetworkStackName}-VPCID
 
   VPCAttachment3a:
     Type: AWS::EC2::TransitGatewayAttachment
-    Properties: 
-      SubnetIds: 
+    Properties:
+      SubnetIds:
         - !Ref MGMTSubnet
       Tags:
-      - Key: Name
-        Value: !Sub ${PodName}-FMC-MGMT-VPCAttachment
+        - Key: Name
+          Value: !Sub ${PodName}-FMC-MGMT-VPCAttachment
       TransitGatewayId: !Ref TransitGateway
       VpcId: !Ref VPC
 
-#FMC Instance definition
+  #FMC Instance definition
   FMCSpokeInstance:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: c5.4xlarge
       ImageId: !Ref FMCAMI
-      KeyName: aws-cloudedge
+      KeyName: labteste
       NetworkInterfaces:
         - GroupSet:
             - !Ref FMCSecurityGroup
@@ -263,40 +256,39 @@ Resources:
 ######################
 
 Outputs:
-  
   MGMTSubnet:
     Description: The subnet ID to use for public web servers
     Value: !Ref MGMTSubnet
     Export:
-      Name: !Sub '${AWS::StackName}-SubnetID'
+      Name: !Sub "${AWS::StackName}-SubnetID"
 
   VPC:
     Description: VPC ID
     Value: !Ref VPC
     Export:
-      Name: !Sub '${AWS::StackName}-VPCID'
+      Name: !Sub "${AWS::StackName}-VPCID"
 
   TGW:
     Description: TGW ID
     Value: !Ref TransitGateway
     Export:
-      Name: !Sub '${AWS::StackName}-TGWID'
+      Name: !Sub "${AWS::StackName}-TGWID"
 
   VPCAttachment:
     Description: VPC Attachment ID
     Value: !Ref VPCAttachment1b
     Export:
-      Name: !Sub '${AWS::StackName}-VPCAttachment'
+      Name: !Sub "${AWS::StackName}-VPCAttachment"
 
   TGWRouteTable:
     Description: TGW Security Route Table ID
     Value: !Ref TGWRouteTable
     Export:
-      Name: !Sub '${AWS::StackName}-TGWRouteTable'
+      Name: !Sub "${AWS::StackName}-TGWRouteTable"
 
   FMCURL:
     Description: URL of the FMC UI
-    Value: !Sub 'https://${FMCSpokeInstance.PublicDnsName}'
+    Value: !Sub "https://${FMCSpokeInstance.PublicDnsName}"
 
   FMCIP:
     Description: Public IP of the FMC
@@ -304,4 +296,4 @@ Outputs:
 
   FMCSSHTerminal:
     Description: SSH to FMC
-    Value: !Sub 'ssh -i cloud-edge admin@${FMCSpokeInstance.PublicIp}'
+    Value: !Sub "ssh -i <key-pair> admin@${FMCSpokeInstance.PublicIp}"
